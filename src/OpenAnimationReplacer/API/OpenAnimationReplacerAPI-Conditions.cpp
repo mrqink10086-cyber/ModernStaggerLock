@@ -11,13 +11,13 @@ namespace OAR_API::Conditions
 		}
 
 		const auto pluginHandle = GetModuleHandle("OpenAnimationReplacer.dll");
-		const auto requestAPIFunction = static_cast<_RequestPluginAPI_Conditions>(SKSE::WinAPI::GetProcAddress(pluginHandle, "RequestPluginAPI_Conditions"));
+		const auto requestAPIFunction = reinterpret_cast<_RequestPluginAPI_Conditions>(::GetProcAddress(pluginHandle, "RequestPluginAPI_Conditions"));
 		if (!requestAPIFunction) {
 			return nullptr;
 		}
 
-		const auto plugin = SKSE::PluginDeclaration::GetSingleton();
-		g_oarConditionsInterface = requestAPIFunction(a_interfaceVersion, plugin->GetName().data(), plugin->GetVersion());
+		const auto plugin = SKSE::PluginVersionData::GetSingleton();
+		g_oarConditionsInterface = requestAPIFunction(a_interfaceVersion, plugin->GetPluginName().data(), plugin->GetPluginVersion());
 		return g_oarConditionsInterface;
 	}
 }

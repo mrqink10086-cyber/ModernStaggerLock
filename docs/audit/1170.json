@@ -1,0 +1,70 @@
+{
+  "runtime": "1170",
+  "checks": [
+    {
+      "name": "Character Update",
+      "id": 207886,
+      "table": 0,
+      "slot": "0xad",
+      "target_rva": "0x667d40"
+    },
+    {
+      "name": "Player Update",
+      "id": 208040,
+      "table": 0,
+      "slot": "0xad",
+      "target_rva": "0x732660"
+    },
+    {
+      "name": "Character NotifyAnimationGraph",
+      "id": 207892,
+      "table": 3,
+      "slot": "0x1",
+      "target_rva": "0x6a35f0"
+    },
+    {
+      "name": "Player NotifyAnimationGraph",
+      "id": 208046,
+      "table": 3,
+      "slot": "0x1",
+      "target_rva": "0x6a35f0"
+    },
+    {
+      "name": "Character ProcessEvent",
+      "id": 207890,
+      "table": 2,
+      "slot": "0x1",
+      "target_rva": "0x69f450"
+    },
+    {
+      "name": "JumpHandler CanProcess",
+      "id": 208731,
+      "table": 0,
+      "slot": "0x1",
+      "target_rva": "0x7a08a0"
+    },
+    {
+      "name": "NPC landing",
+      "id": 37507,
+      "offset": "0x9bb",
+      "rva": "0x67725b",
+      "bytes": "e8 d0 3a 10 00",
+      "target_rva": "0x77ad30"
+    },
+    {
+      "name": "Player landing",
+      "id": 42350,
+      "offset": "0x179",
+      "rva": "0x79b6f9",
+      "bytes": "e8 32 f6 fd ff",
+      "target_rva": "0x77ad30"
+    },
+    {
+      "name": "Stagger state check",
+      "id": 37710,
+      "offset": "0x54",
+      "rva": "0x68d124",
+      "bytes": "0f 85 d1 01 00 00"
+    }
+  ]
+}

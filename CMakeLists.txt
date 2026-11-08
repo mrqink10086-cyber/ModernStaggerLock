@@ -1,149 +1,47 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.24)
 
-# standards & flags
+project(ModernStaggerLock VERSION 1.2.0 LANGUAGES CXX RC)
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE FILEPATH "")
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+set(SKSEPluginAuthor "Maxsu" CACHE STRING "Plugin author")
+set(COMMONLIBSSE_NG_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../CommonLibSSE-NG-ng" CACHE PATH "CommonLibSSE-NG source directory")
+set(DKUTIL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/external/DKUtil" CACHE PATH "DKUtil source directory")
 
-include(GNUInstallDirs)
-
-# info
-project(
-	ModernStaggerLock
-	VERSION 1.1.7
-	LANGUAGES CXX
-)
-
-# out-of-source builds only
-if(${PROJECT_SOURCE_DIR} STREQUAL ${PROJECT_BINARY_DIR})
-	message(FATAL_ERROR "In-source builds are not allowed.")
+if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
+    message(FATAL_ERROR "In-source builds are not allowed.")
 endif()
 
-# in-place configuration
-configure_file(
-	${CMAKE_CURRENT_SOURCE_DIR}/cmake/Version.h.in
-	${CMAKE_CURRENT_BINARY_DIR}/include/Version.h
-	@ONLY
-)
+option(ENABLE_SKYRIM_SE "Build for Skyrim 1.5.97" ON)
+option(ENABLE_SKYRIM_AE "Build for Skyrim 1.6.1170" ON)
+set(ENABLE_SKYRIM_VR OFF CACHE BOOL "VR is not supported by this plugin" FORCE)
+set(BUILD_TESTS OFF CACHE BOOL "Build CommonLibSSE tests")
+set(SKSE_SUPPORT_XBYAK ON CACHE BOOL "Enable Xbyak trampoline support")
+add_subdirectory("${COMMONLIBSSE_NG_PATH}" CommonLibSSE)
 
-configure_file(
-	${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in
-	${CMAKE_CURRENT_BINARY_DIR}/version.rc
-	@ONLY
-)
-
-# source files
-execute_process(COMMAND powershell -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/!Update.ps1" "SOURCEGEN" "${PROJECT_VERSION}" "${CMAKE_CURRENT_BINARY_DIR}")
-include(${CMAKE_CURRENT_BINARY_DIR}/sourcelist.cmake)
-source_group(
-	TREE 
-		${CMAKE_CURRENT_SOURCE_DIR}
-	FILES 
-		${SOURCES}
-)
-
-source_group(
-	TREE ${CMAKE_CURRENT_BINARY_DIR}
-	FILES ${CMAKE_CURRENT_BINARY_DIR}/include/Version.h
-)
-
-# dependencies
-add_subdirectory($ENV{CommonLibSSEPath} CommonLibSSE)
-add_subdirectory($ENV{DKUtilPath} DKUtil)
+if(NOT EXISTS "${DKUTIL_PATH}/CMakeLists.txt")
+    include(FetchContent)
+    FetchContent_Declare(DKUtil
+        GIT_REPOSITORY https://github.com/gottyduke/DKUtil.git
+        GIT_TAG 19fcb2d2ee00a9b678bf08b24c53208ab7618fc6)
+    FetchContent_MakeAvailable(DKUtil)
+else()
+    add_subdirectory("${DKUTIL_PATH}" DKUtil)
+endif()
+find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(xbyak CONFIG REQUIRED)
+find_path(SIMPLEINI_INCLUDE_DIRS SimpleIni.h REQUIRED)
 
-# cmake target
-# runtime
-add_library(
-	${PROJECT_NAME}
-	SHARED
-		${SOURCES}
-		${CMAKE_CURRENT_BINARY_DIR}/include/Version.h
-		${CMAKE_CURRENT_BINARY_DIR}/version.rc
-		.clang-format
-		vcpkg.json
-)
-
-# include dir
-target_include_directories(
-	${PROJECT_NAME}
-	PRIVATE
-		${CMAKE_CURRENT_BINARY_DIR}/include
-		${CMAKE_CURRENT_SOURCE_DIR}/include
-		${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-
-# linkage
-target_link_libraries(
-	${PROJECT_NAME} 
-	PRIVATE
-		CommonLibSSE::CommonLibSSE
-		DKUtil::DKUtil
-		spdlog::spdlog
-)
-
-# compiler def
-if (MSVC)
-	add_compile_definitions(_MBCS)
-
-	target_compile_options(
-		${PROJECT_NAME}
-		PRIVATE
-			/MP
-			/await
-			/W0
-			/WX
-			/permissive-
-			/Zc:alignedNew
-			/Zc:auto
-			/Zc:__cplusplus
-			/Zc:externC
-			/Zc:externConstexpr
-			/Zc:forScope
-			/Zc:hiddenFriend
-			/Zc:implicitNoexcept
-			/Zc:lambda
-			/Zc:noexceptTypes
-			/Zc:preprocessor
-			/Zc:referenceBinding
-			/Zc:rvalueCast
-			/Zc:sizedDealloc
-			/Zc:strictStrings
-			/Zc:ternary
-			/Zc:threadSafeInit
-			/Zc:trigraphs
-			/Zc:wchar_t
-			/wd4200 # nonstandard extension used : zero-sized array in struct/union
-	)
-endif()
-
-# PCH
-target_precompile_headers(
-	${PROJECT_NAME}
-	PRIVATE
-		src/PCH.h
-)
-
-# post build event
-add_custom_command(
-	TARGET 
-		${PROJECT_NAME}
-	POST_BUILD
-		COMMAND 
-			powershell -NoProfile -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/!Update.ps1" "COPY" "${PROJECT_VERSION}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$(ConfigurationName)" "${PROJECT_NAME}" "${ANNIVERSARY_EDITION}"
-		COMMENT 
-			"Updating project :))"
-)
-
-# called via !Rebuild.ps1
-if(DEFINED GROUP)
-set_target_properties(
-	${PROJECT_NAME}
-	PROPERTIES
-	FOLDER
-	${GROUP}
-)
-endif()
+configure_file(cmake/Version.h.in include/Version.h @ONLY)
+configure_file(cmake/version.rc.in version.rc @ONLY)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp src/*.h include/*.h)
+add_library(${PROJECT_NAME} SHARED ${SOURCES} "${CMAKE_CURRENT_BINARY_DIR}/version.rc")
+target_include_directories(${PROJECT_NAME} PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/include" include src ${SIMPLEINI_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PRIVATE CommonLibSSE::CommonLibSSE DKUtil::DKUtil
+    nlohmann_json::nlohmann_json spdlog::spdlog xbyak::xbyak)
+target_compile_options(${PROJECT_NAME} PRIVATE /W3 /permissive- /Zc:__cplusplus /Zc:preprocessor)
+target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION Data/SKSE/Plugins COMPONENT Plugin)

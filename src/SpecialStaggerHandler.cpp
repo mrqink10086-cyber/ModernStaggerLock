@@ -4,7 +4,7 @@
 
 namespace ModernStaggerLock
 {
-	constexpr int32_t HashSpecialStaggerID(const char* data, size_t const size) noexcept
+	int32_t HashSpecialStaggerID(const char* data, size_t const size) noexcept
 	{
 		int32_t hash = 5381;
 
@@ -89,7 +89,7 @@ namespace ModernStaggerLock
 		return false;
 	}
 
-	constexpr std::uint32_t SpecialStaggerHandler::SpecialStaggerData::GetNameHash() noexcept
+	std::uint32_t SpecialStaggerHandler::SpecialStaggerData::GetNameHash() noexcept
 	{
 		return animName.length() > 0 ? HashSpecialStaggerID(animName.data(), animName.size()) : 0;
 	}

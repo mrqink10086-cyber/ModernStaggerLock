@@ -9,7 +9,7 @@ namespace ModernStaggerLock
 	using namespace DKUtil::Alias;
 	using json = nlohmann::json;
 
-	constexpr int32_t HashSpecialStaggerID(const char* data, size_t const size) noexcept;
+	int32_t HashSpecialStaggerID(const char* data, size_t const size) noexcept;
 
 	class SpecialStaggerHandler : public DKUtil::model::Singleton<SpecialStaggerHandler>
 	{
@@ -18,7 +18,7 @@ namespace ModernStaggerLock
 	public:
 		struct SpecialStaggerData
 		{
-			constexpr std::uint32_t GetNameHash() noexcept;
+			std::uint32_t GetNameHash() noexcept;
 
 			bool IsIgnoreStaggerLevel() const noexcept { return ignoreStaggerLevel; }
 

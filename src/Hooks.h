@@ -1,4 +1,5 @@
 #pragma once
+#include "Runtime.h"
 
 namespace ModernStaggerLock
 {
@@ -27,7 +28,7 @@ namespace ModernStaggerLock
 				return func(a_graphMgr, a_eventName);
 			}
 
-			static inline REL::Relocation<decltype(&RE::Character::NotifyAnimationGraph)> func;
+			static inline REL::Relocation<decltype(&Hook_NotifyAnimationGraph)> func;
 		};
 
 		class PlayerEx : public RE::PlayerCharacter
@@ -52,7 +53,7 @@ namespace ModernStaggerLock
 				return func(a_graphMgr, a_eventName);
 			}
 
-			static inline REL::Relocation<decltype(&RE::PlayerCharacter::NotifyAnimationGraph)> func;
+			static inline REL::Relocation<decltype(&Hook_NotifyAnimationGraph)> func;
 		};
 
 		friend class CharacterEx;
@@ -89,7 +90,7 @@ namespace ModernStaggerLock
 	public:
 		static void InstallHook()
 		{
-			REL::Relocation<std::uintptr_t> AnimEventSinkVtbl{ RELOCATION_ID(261399, 207890) };
+			REL::Relocation<std::uintptr_t> AnimEventSinkVtbl{ RE::VTABLE_Character[2] };
 			_ProcessEvent = AnimEventSinkVtbl.write_vfunc(0x1, ProcessEvent);
 			INFO("Hook Process Animation Event!");
 		}
@@ -147,11 +148,9 @@ namespace ModernStaggerLock
 	public:
 		static void InstallHook()
 		{
-			SKSE::AllocTrampoline(1 << 4);
 			auto& trampoline = SKSE::GetTrampoline();
 
-			REL::Relocation<std::uintptr_t> callerFunc{ REL::ID(36507) };  //1.5.97 1405E4880
-			_PerformAction = trampoline.write_call<5>(callerFunc.address() + 0X89D, PerformLandAction);
+			_PerformAction = trampoline.write_call<5>(Runtime::NPCLandCall(), PerformLandAction);
 			INFO("{} Done!", __FUNCTION__);
 		}
 
@@ -166,11 +165,9 @@ namespace ModernStaggerLock
 	public:
 		static void InstallHook()
 		{
-			SKSE::AllocTrampoline(1 << 4);
 			auto& trampoline = SKSE::GetTrampoline();
 
-			REL::Relocation<std::uintptr_t> callerFunc{ REL::ID(41271) };  //1.5.97 140705530
-			_PerformAction = trampoline.write_call<5>(callerFunc.address() + 0x241, PerformLandAction);
+			_PerformAction = trampoline.write_call<5>(Runtime::PlayerLandCall(), PerformLandAction);
 			INFO("{} Done!", __FUNCTION__);
 		}
 

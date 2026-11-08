@@ -10,6 +10,10 @@ namespace ModernStaggerLock
 	void EventCallback(SKSE::MessagingInterface::Message* msg)
 	{
 		if (msg->type == SKSE::MessagingInterface::kPostLoad) {
+			if (!Runtime::ValidatePatchSites()) {
+				SKSE::stl::report_and_fail("ModernStaggerLock: incompatible landing/stagger patch site. See ModernStaggerLock.log.");
+			}
+			SKSE::AllocTrampoline(32);
 			ActorUpdateHook::CharacterEx::InstallHook();
 			ActorUpdateHook::PlayerEx::InstallHook();
 
@@ -40,7 +44,7 @@ namespace ModernStaggerLock
 			if (g_oarConditionsInterface) {
 				RegisterCondition<GetSpeicalStaggerNameCondition>();
 			} else {
-				ERROR("Failed to request Open Animation Replacer API"sv);
+				ERROR("Failed to request Open Animation Replacer API");
 			}
 		} else if (msg->type == SKSE::MessagingInterface::kDataLoaded) {
 			MSLSettings::GetSingleton();
