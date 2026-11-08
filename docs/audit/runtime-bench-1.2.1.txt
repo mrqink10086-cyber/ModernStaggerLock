@@ -1,0 +1,13 @@
+Runtime microbench seed 2822558223
+CPU: Intel Core i5-13600KF
+Build: MSVC 19.44 x64 Release, 2 warmups, 7 samples (median)
+classifier supported events    old 55.16 ns/op  new 17.56 ns/op  old/new 3.14x
+classifier unrelated events    old 12.88 ns/op  new 1.51 ns/op  old/new 8.53x
+classifier mixed events        old 21.56 ns/op  new 9.69 ns/op  old/new 2.23x
+JSON parse vs cache hits       old 1013.11 ns/op  new 43.81 ns/op  old/new 23.12x
+transition copy vs const vector old 830.28 ns/op  new 4.13 ns/op  old/new 200.82x
+JSON churn 128 keys / 32 slots old 625.68 ns/op  new 639.56 ns/op  old/new 0.98x
+recovery events 4              old 20.57 ns/op  new 18.61 ns/op  old/new 1.11x
+recovery events 32             old 138.99 ns/op  new 49.59 ns/op  old/new 2.80x
+recovery events 256            old 1012.97 ns/op  new 78.80 ns/op  old/new 12.85x
+checksums 5647086431715518492

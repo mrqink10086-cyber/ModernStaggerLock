@@ -1,30 +1,14 @@
 #include "SpecialStaggerHandler.h"
 #include "Settings.h"
 #include "Utils.h"
+#include "RuntimeLogic.h"
+#include "AnimationNames.h"
 
 namespace ModernStaggerLock
 {
 	int32_t HashSpecialStaggerID(const char* data, size_t const size) noexcept
 	{
-		int32_t hash = 5381;
-
-		for (const char* c = data; c < data + size; ++c)
-			hash = ((hash << 5) + hash) + charToLower(*c);
-
-		return hash;
-	}
-
-	bool SpecialStaggerHandler::ParseSpecialStaggerData(const std::string_view a_string, SpecialStaggerData& a_data)
-	{
-		try {
-			auto j = json::parse(a_string);
-			a_data = j.get<SpecialStaggerData>();
-			return true;
-		} catch (const json::exception&) {
-			return false;
-		}
-
-		return false;
+		return Logic::HashName({ data, size });
 	}
 
 	bool SpecialStaggerHandler::FindSpecialStaggerData(RE::Actor* a_actor, SpecialStaggerData& a_data)
@@ -39,7 +23,8 @@ namespace ModernStaggerLock
 
 		auto extraData = MSLSettings::ersh_Precision->GetCachedExtraData(static_cast<RE::TESObjectREFR*>(a_actor)->GetHandle(), Plugin::NAME.data());
 		if (extraData) {
-			return ParseSpecialStaggerData(extraData, a_data);
+			thread_local StaggerPayloadCache cache;
+			return cache.Find(extraData, a_data);
 		}
 
 		return false;
@@ -60,9 +45,10 @@ namespace ModernStaggerLock
 			}
 
 			std::int32_t curSpecialStaggerId = 0;
-			if (a_actor->GetGraphVariableInt("msl_specialStaggerId", curSpecialStaggerId) && CanTriggerTransaction(curSpecialStaggerId, nextSpecialStaggerId)) {
-				a_actor->SetGraphVariableInt("msl_staggerLevel", 5);
-				a_actor->SetGraphVariableInt("msl_specialStaggerId", nextSpecialStaggerId);
+			const auto& names = AnimationNames::Get();
+			if (a_actor->GetGraphVariableInt(names.specialId, curSpecialStaggerId) && CanTriggerTransaction(curSpecialStaggerId, nextSpecialStaggerId)) {
+				a_actor->SetGraphVariableInt(names.mslLevel, 5);
+				a_actor->SetGraphVariableInt(names.specialId, nextSpecialStaggerId);
 			}
 		}
 	}
@@ -76,31 +62,17 @@ namespace ModernStaggerLock
 
 		auto it = transDataMap.find(a_curAnimID);
 		if (it != transDataMap.end()) {
-			auto transData = it->second;
+			const auto& transData = it->second;
 			if (transData.Unrestricted) {
 				DEBUG("Return Unrestricted True");
 				return true;
 			} else {
 				DEBUG("Return List");
-				return transData.transAnimList.find(a_NextAnimID) != transData.transAnimList.end();
+				return std::binary_search(transData.transAnimList.begin(), transData.transAnimList.end(), a_NextAnimID);
 			}
 		}
 
 		return false;
-	}
-
-	std::uint32_t SpecialStaggerHandler::SpecialStaggerData::GetNameHash() noexcept
-	{
-		return animName.length() > 0 ? HashSpecialStaggerID(animName.data(), animName.size()) : 0;
-	}
-
-	void from_json(const json& j, SpecialStaggerData& a_data)
-	{
-		j.at("SpecialStaggerName").get_to(a_data.animName);
-
-		if (j.find("IgnoreStaggerLevel") != j.end()) {
-			j.at("IgnoreStaggerLevel").get_to(a_data.ignoreStaggerLevel);
-		}
 	}
 
 	void from_json(const json& j, SpecialStaggerTransactionData& a_data)
@@ -110,9 +82,12 @@ namespace ModernStaggerLock
 		if (!a_data.Unrestricted) {
 			std::vector<std::string> animNames;
 			j.at("TransAnimList").get_to(animNames);
+			a_data.transAnimList.reserve(animNames.size());
 			for (auto const& animName : animNames) {
-				a_data.transAnimList.emplace(HashSpecialStaggerID(animName.data(), animName.size()));
+				a_data.transAnimList.push_back(HashSpecialStaggerID(animName.data(), animName.size()));
 			}
+			std::sort(a_data.transAnimList.begin(), a_data.transAnimList.end());
+			a_data.transAnimList.erase(std::unique(a_data.transAnimList.begin(), a_data.transAnimList.end()), a_data.transAnimList.end());
 		}
 	}
 

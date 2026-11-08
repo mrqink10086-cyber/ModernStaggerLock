@@ -1,5 +1,6 @@
 #include "Conditions.h"
 #include "SpecialStaggerHandler.h"
+#include "AnimationNames.h"
 
 namespace ModernStaggerLock
 {
@@ -14,7 +15,7 @@ namespace ModernStaggerLock
 		[[maybe_unused]] RE::hkbClipGenerator* a_clipGenerator) const
 	{
 		std::int32_t curSpecialStaggerId = 0;
-		if (a_refr && a_refr->GetGraphVariableInt("msl_specialStaggerId", curSpecialStaggerId) && curSpecialStaggerId) {
+		if (a_refr && a_refr->GetGraphVariableInt(AnimationNames::Get().specialId, curSpecialStaggerId) && curSpecialStaggerId) {
 			const auto textArgument = textComponent->GetTextValue();
 			if (HashSpecialStaggerID(textArgument.data(), textArgument.size()) == curSpecialStaggerId) {
 				return true;
@@ -33,7 +34,7 @@ namespace ModernStaggerLock
 	RE::BSString GetSpeicalStaggerNameCondition::GetCurrent(RE::TESObjectREFR* a_refr) const
 	{
 		std::int32_t curSpecialStaggerId = 0;
-		if (a_refr && a_refr->GetGraphVariableInt("msl_specialStaggerId", curSpecialStaggerId)) {
+		if (a_refr && a_refr->GetGraphVariableInt(AnimationNames::Get().specialId, curSpecialStaggerId)) {
 			return std::format("{}", curSpecialStaggerId).data();
 		}
 

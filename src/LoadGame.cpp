@@ -48,6 +48,7 @@ namespace ModernStaggerLock
 			}
 		} else if (msg->type == SKSE::MessagingInterface::kDataLoaded) {
 			MSLSettings::GetSingleton();
+			AnimationNames::Get();
 		}
 	}
 

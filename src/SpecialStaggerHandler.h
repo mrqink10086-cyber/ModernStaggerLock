@@ -3,6 +3,7 @@
 #include "DKUtil/Utility.hpp"
 #include "PrecisionAPI.h"
 #include "nlohmann/json.hpp"
+#include "StaggerData.h"
 
 namespace ModernStaggerLock
 {
@@ -16,28 +17,13 @@ namespace ModernStaggerLock
 		friend DKUtil::model::Singleton<SpecialStaggerHandler>;
 
 	public:
-		struct SpecialStaggerData
-		{
-			std::uint32_t GetNameHash() noexcept;
-
-			bool IsIgnoreStaggerLevel() const noexcept { return ignoreStaggerLevel; }
-
-			friend void from_json(const json& j, SpecialStaggerData& a_data);
-
-		private:
-			std::string animName = "";
-
-			bool ignoreStaggerLevel = false;
-		};
-
 		struct SpecialStaggerTransactionData
 		{
 			std::string animName = "";
 			bool Unrestricted = false;
-			std::set<std::int32_t> transAnimList = {};
+			std::vector<std::int32_t> transAnimList = {};
 		};
 
-		using SpecialStaggerTargetMap = std::unordered_map<RE::Actor*, SpecialStaggerData>;
 		using SpecialStaggerTransMap = std::unordered_map<std::int32_t, SpecialStaggerTransactionData>;
 
 		SpecialStaggerHandler() = default;
@@ -48,12 +34,9 @@ namespace ModernStaggerLock
 		SpecialStaggerTransMap transDataMap;
 
 	private:
-		static bool ParseSpecialStaggerData(const std::string_view a_string, SpecialStaggerData& a_data);
 		bool CanTriggerTransaction(const std::int32_t a_curAnimID, const std::int32_t a_NextAnimID) const;
 	};
-	using SpecialStaggerData = SpecialStaggerHandler::SpecialStaggerData;
 	using SpecialStaggerTransactionData = SpecialStaggerHandler::SpecialStaggerTransactionData;
 
-	void from_json(const json& j, SpecialStaggerData& a_data);
 	void from_json(const json& j, SpecialStaggerTransactionData& a_data);
 }

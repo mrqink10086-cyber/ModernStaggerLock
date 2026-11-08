@@ -1,6 +1,6 @@
 {
   "name": "modernstaggerlock",
-  "version-string": "1.2.0",
+  "version-string": "1.2.1",
   "description": "Modern Stagger Lock for CommonLibSSE-NG",
   "license": "MIT",
   "builtin-baseline": "ee12231b20c95013c6638d845d04c91559a1d1ff",

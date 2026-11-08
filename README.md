@@ -1,6 +1,6 @@
 # ModernStaggerLock — CommonLibSSE-NG
 
-影天韧性大修的 CommonLibSSE-NG 移植版，插件版本 **1.2.0**。
+影天韧性大修的 CommonLibSSE-NG 移植版，插件版本 **1.2.1**。
 
 ## 安装
 
@@ -35,6 +35,8 @@ cmake --install build/ng --config Release --component Plugin --prefix dist/packa
 `AE`、`SE` preset 可构建单一运行时版本；默认 `NG` 构建同时支持上表两版的 DLL。旧 `!Update.ps1` 不再参与构建。
 
 本机实际构建复用了已安装的静态依赖，完整命令与迁移范围见 [迁移记录](docs/migration-commonlibsse-ng.md)。
+
+1.2.1 增加事件过滤、图变量名缓存、配置快照、Precision 载荷解析缓存和连续转场列表。保持原有同步时序，详情、测试与基准见 [运行时优化记录](docs/OPTIMIZATION.md)。
 
 ## 来源
 

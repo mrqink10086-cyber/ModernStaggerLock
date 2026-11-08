@@ -1,230 +1,121 @@
 #include "Hooks.h"
 #include "Settings.h"
 #include "SpecialStaggerHandler.h"
-#include "Utils.h"
 
 namespace ModernStaggerLock
 {
-
-	bool NotifyAnimationGraphHook::ProcessStaggerHanlder(RE::IAnimationGraphManagerHolder* a_graphMgr, const RE::BSFixedString& a_eventName)
+	bool NotifyAnimationGraphHook::ProcessNotification(RE::IAnimationGraphManagerHolder* a_graphMgr, const RE::BSFixedString& a_eventName)
 	{
-		using StaggerType = MSLSettings::StaggerType;
+		const std::string_view eventName = a_eventName.c_str();
+		const bool staggerStart = Logic::EqualInsensitive(eventName, "StaggerStart");
+		if (!staggerStart && !MSLSettings::quickRecoveryEvents.Contains(eventName)) {
+			return false;
+		}
 
 		auto actorRef = a_graphMgr ? skyrim_cast<RE::Actor*>(a_graphMgr) : nullptr;
-		if (!actorRef)
+		if (!actorRef) {
 			return false;
+		}
 
-		if (_strcmpi("StaggerStart", a_eventName.c_str()) == 0) {
+		const auto& names = AnimationNames::Get();
+		if (staggerStart) {
 			// Set Stagger Direction
 			float staggerDirection = 0.f;
-			actorRef->GetGraphVariableFloat("staggerDirection", staggerDirection);
-			actorRef->SetGraphVariableInt("msl_staggerDirection", staggerDirection < 0.25f || staggerDirection > 0.75 ? 0 : 1);
+			actorRef->GetGraphVariableFloat(names.staggerDirection, staggerDirection);
+			actorRef->SetGraphVariableInt(names.mslDirection, staggerDirection < 0.25f || staggerDirection > 0.75f ? 0 : 1);
 
 			//Set Stagger Level
 			float staggerMagnitude = 0.f;
-			actorRef->GetGraphVariableFloat("staggerMagnitude", staggerMagnitude);
-			auto GetStaggerLevel = [](const float staggerMagnitude) -> std::int32_t {
-				auto mslSetting = MSLSettings::GetSingleton();
-				const float StaggerLevelRange[StaggerType::kTotal] = {
-					*mslSetting->SmallStaggerMagnitude,
-					*mslSetting->MediumStaggerMagnitude,
-					*mslSetting->LargeStaggerMagnitude,
-					*mslSetting->LargestStaggerMagnitude
-				};
-
-				for (std::int32_t i = StaggerType::kLargest; i >= StaggerType::kSmall; i--) {
-					if (staggerMagnitude >= StaggerLevelRange[i]) {
-						return i + 1;
-					}
-				}
-
-				return 1;
-			};
-			auto staggerlevel = GetStaggerLevel(staggerMagnitude);
-			actorRef->SetGraphVariableInt("msl_staggerLevel", staggerlevel);
+			actorRef->GetGraphVariableFloat(names.staggerMagnitude, staggerMagnitude);
+			const auto staggerLevel = MSLSettings::GetSingleton()->GetStaggerLevel(staggerMagnitude);
+			actorRef->SetGraphVariableInt(names.mslLevel, staggerLevel);
 
 			//Set Speical Stagger Type
-			SpecialStaggerHandler::GetSingleton()->ProcessSpeicalStagger(actorRef, staggerlevel);
-
-			return true;
-		}
-
-		return false;
-	}
-
-	bool NotifyAnimationGraphHook::ShouldQuickRecovery(RE::IAnimationGraphManagerHolder* a_graphMgr, const RE::BSFixedString& a_eventName)
-	{
-		auto actorRef = a_graphMgr ? skyrim_cast<RE::Actor*>(a_graphMgr) : nullptr;
-		if (!actorRef || !actorRef->IsStaggering())
+			SpecialStaggerHandler::GetSingleton()->ProcessSpeicalStagger(actorRef, staggerLevel);
 			return false;
-
-		bool shouldQuickRecovery = false;
-		if (actorRef->GetGraphVariableBool("MSL_IsStaggerRecovery", shouldQuickRecovery) && shouldQuickRecovery) {
-			for (const auto& recovEvent : MSLSettings::quickRecoveryEvents) {
-				if (_strcmpi(recovEvent.c_str(), a_eventName.c_str()) == 0)
-					return true;
-			}
 		}
 
-		return false;
+		if (!actorRef->IsStaggering()) {
+			return false;
+		}
+		bool recovery = false;
+		return actorRef->GetGraphVariableBool(names.recovery, recovery) && recovery;
 	}
 
 	bool DisableStaggerJumpHook::Hook_CanProcess(RE::JumpHandler* a_handler, RE::InputEvent* a_event)
 	{
-		auto result = func(a_handler, a_event);
-		if (result) {
-			auto playerRef = RE::PlayerCharacter::GetSingleton();
-			auto settings = MSLSettings::GetSingleton();
-			if (playerRef && playerRef->IsStaggering() && *settings->DisableJumpWhenStagger) {
-				return false;
-			}
+		const auto result = func(a_handler, a_event);
+		if (result && MSLSettings::GetSingleton()->IsJumpDisabled()) {
+			const auto playerRef = RE::PlayerCharacter::GetSingleton();
+			return !playerRef || !playerRef->IsStaggering();
 		}
-
 		return result;
-	}
-
-	constexpr uint32_t HashToUInt(const char* data, size_t const size) noexcept
-	{
-		uint32_t HashToUInt = 5381;
-
-		for (const char* c = data; c < data + size; ++c)
-			HashToUInt = ((HashToUInt << 5) + HashToUInt) + charToLower(*c);
-
-		return HashToUInt;
-	}
-
-	inline constexpr uint32_t operator"" _h(const char* str, size_t size) noexcept
-	{
-		return HashToUInt(str, size);
 	}
 
 	EventResult AnimEventHook::ProcessEvent(RE::BSTEventSink<RE::BSAnimationGraphEvent>* a_sink, RE::BSAnimationGraphEvent* a_event, RE::BSTEventSource<RE::BSAnimationGraphEvent>* a_eventSource)
 	{
-		if (!a_event || !a_event->holder)
-			return _ProcessEvent(a_sink, a_event, a_eventSource);
-
-		auto actorRef = a_event->holder->As<RE::Actor>();
-		if (!actorRef) {
-			return _ProcessEvent(a_sink, a_event, a_eventSource);
-		}
-
-		std::string_view eventTag = a_event->tag.data();
-
-		static auto SetStaggerVariable = [](RE::Actor* a_actor, const std::string_view eventTag) {
-			std::int32_t SmallStaggerCounter = 0,
-						 MediumStaggerCounter = 0,
-						 LargeStaggerCounter = 0,
-						 LargestStaggerCounter = 0,
-						 SpecialStaggerCounter = 0;
-
-			switch (HashToUInt(eventTag.data(), eventTag.size())) {
-			case "staggerStop"_h:
-				a_actor->SetGraphVariableInt("msl_SpecialStaggerID", 0);
-				break;
-
-			case "MSL_SmallStaggerStart"_h:
-				a_actor->SetGraphVariableInt("msl_SpecialStaggerID", 0);
-				a_actor->GetGraphVariableInt("msl_SmallStaggerCounter", SmallStaggerCounter);
-				SmallStaggerCounter += 1;
-				break;
-
-			case "MSL_MediumStaggerStart"_h:
-				a_actor->SetGraphVariableInt("msl_SpecialStaggerID", 0);
-				a_actor->GetGraphVariableInt("msl_MediumStaggerCounter", MediumStaggerCounter);
-				MediumStaggerCounter += 1;
-				break;
-
-			case "MSL_LargeStaggerStart"_h:
-				a_actor->SetGraphVariableInt("msl_SpecialStaggerID", 0);
-				a_actor->GetGraphVariableInt("msl_LargeStaggerCounter", LargeStaggerCounter);
-				LargeStaggerCounter += 1;
-				break;
-
-			case "MSL_LargestStaggerStart"_h:
-				a_actor->SetGraphVariableInt("msl_SpecialStaggerID", 0);
-				a_actor->GetGraphVariableInt("msl_LargestStaggerCounter", LargestStaggerCounter);
-				LargestStaggerCounter += 1;
-				break;
-
-			case "MSL_SpecialStaggerStart"_h:
-				a_actor->GetGraphVariableInt("msl_SpecialStaggerCounter", SpecialStaggerCounter);
-				SpecialStaggerCounter += 1;
-				break;
-
-			default:
-				break;
-			}
-
-			a_actor->SetGraphVariableInt("msl_SmallStaggerCounter", SmallStaggerCounter);
-			a_actor->SetGraphVariableInt("msl_MediumStaggerCounter", MediumStaggerCounter);
-			a_actor->SetGraphVariableInt("msl_LargeStaggerCounter", LargeStaggerCounter);
-			a_actor->SetGraphVariableInt("msl_LargestStaggerCounter", LargestStaggerCounter);
-			a_actor->SetGraphVariableInt("msl_SpecialStaggerCounter", SpecialStaggerCounter);
-		};
-
-		static std::vector<std::string_view> events = {
-			{ "staggerStop" },
-			{ "MSL_SmallStaggerStart" },
-			{ "MSL_MediumStaggerStart" },
-			{ "MSL_LargeStaggerStart" },
-			{ "MSL_LargestStaggerStart" },
-			{ "MSL_SpecialStaggerStart" }
-		};
-
-		for (const auto& eventName : events) {
-			if (_strcmpi(eventName.data(), a_event->tag.c_str()) == 0) {
-				SetStaggerVariable(actorRef, eventName);
-				break;
+		if (a_event && a_event->holder) {
+			const auto kind = Logic::ClassifyEvent(a_event->tag.c_str());
+			if (kind != Logic::StaggerEvent::kOther) {
+				if (auto actor = a_event->holder->As<RE::Actor>()) {
+					const auto& names = AnimationNames::Get();
+					if (kind != Logic::StaggerEvent::kSpecial) {
+						actor->SetGraphVariableInt(names.specialID, 0);
+					}
+					const auto counterIndex = static_cast<std::int32_t>(kind);
+					std::int32_t count = 0;
+					if (counterIndex >= 0) {
+						actor->GetGraphVariableInt(names.counters[counterIndex], count);
+						++count;
+					}
+					for (std::int32_t i = 0; i < static_cast<std::int32_t>(names.counters.size()); ++i) {
+						actor->SetGraphVariableInt(names.counters[i], i == counterIndex ? count : 0);
+					}
+				}
 			}
 		}
-
 		return _ProcessEvent(a_sink, a_event, a_eventSource);
 	}
 
 	void ActorUpdateHook::CharacterEx::Hook_Update(float a_delta)
 	{
 		func(this, a_delta);
-
-		auto charCtrl = GetCharController();
-		if (charCtrl) {
-			auto charState = static_cast<std::int32_t>(charCtrl->context.currentState);
-			SetGraphVariableInt("msl_CharacterStateType", charState);
+		if (const auto controller = GetCharController()) {
+			SetGraphVariableInt(AnimationNames::Get().characterState, static_cast<std::int32_t>(controller->context.currentState));
 		}
 	}
 
 	void ActorUpdateHook::PlayerEx::Hook_Update(float a_delta)
 	{
 		func(this, a_delta);
+		if (const auto controller = GetCharController()) {
+			SetGraphVariableInt(AnimationNames::Get().characterState, static_cast<std::int32_t>(controller->context.currentState));
+		}
+	}
 
-		auto charCtrl = GetCharController();
-		if (charCtrl) {
-			auto charState = static_cast<std::int32_t>(charCtrl->context.currentState);
-			SetGraphVariableInt("msl_CharacterStateType", charState);
+	namespace
+	{
+		void UpdateLandEvent(RE::TESActionData* a_data)
+		{
+			if (a_data && a_data->source && a_data->action && Logic::EqualInsensitive(a_data->action->GetFormEditorID(), "ActionLand")) {
+				const auto& names = AnimationNames::Get();
+				bool specialFalling = false;
+				if (a_data->source->GetGraphVariableBool(names.specialFalling, specialFalling) && specialFalling) {
+					a_data->animEvent = names.specialLandStart;
+				}
+			}
 		}
 	}
 
 	bool PerformLandActionHook_NPC::PerformLandAction(RE::TESActionData* a_data)
 	{
-		if (a_data && a_data->source && a_data->action && _strcmpi(a_data->action->GetFormEditorID(), "ActionLand") == 0) {
-			bool IsSpecialStaggerFalling = false;
-			if (a_data->source->GetGraphVariableBool("msl_IsSpecialStaggerFalling", IsSpecialStaggerFalling) && IsSpecialStaggerFalling) {
-				a_data->animEvent = "MSL_SpecialStaggerLandStart";
-			}
-		}
-
+		UpdateLandEvent(a_data);
 		return _PerformAction(a_data);
 	}
 
 	bool PerformLandActionHook_PC::PerformLandAction(RE::TESActionData* a_data)
 	{
-		if (a_data && a_data->source && a_data->action && _strcmpi(a_data->action->GetFormEditorID(), "ActionLand") == 0) {
-			bool IsSpecialStaggerFalling = false;
-			if (a_data->source->GetGraphVariableBool("msl_IsSpecialStaggerFalling", IsSpecialStaggerFalling) && IsSpecialStaggerFalling) {
-				a_data->animEvent = "MSL_SpecialStaggerLandStart";
-			}
-		}
-
+		UpdateLandEvent(a_data);
 		return _PerformAction(a_data);
 	}
-
 }

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(ModernStaggerLock VERSION 1.2.0 LANGUAGES CXX RC)
+project(ModernStaggerLock VERSION 1.2.1 LANGUAGES CXX RC)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -45,3 +45,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE CommonLibSSE::CommonLibSSE DKUtil:
 target_compile_options(${PROJECT_NAME} PRIVATE /W3 /permissive- /Zc:__cplusplus /Zc:preprocessor)
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION Data/SKSE/Plugins COMPONENT Plugin)
+
+option(MSL_BUILD_TESTS "Build standalone runtime logic tests and benchmarks" OFF)
+if(MSL_BUILD_TESTS)
+    enable_testing()
+    add_executable(msl_runtime_tests tests/runtime_tests.cpp src/StaggerData.cpp)
+    target_include_directories(msl_runtime_tests PRIVATE src)
+    target_link_libraries(msl_runtime_tests PRIVATE nlohmann_json::nlohmann_json)
+    add_test(NAME msl_runtime_tests COMMAND msl_runtime_tests)
+    add_executable(msl_runtime_bench EXCLUDE_FROM_ALL tests/runtime_bench.cpp src/StaggerData.cpp)
+    target_include_directories(msl_runtime_bench PRIVATE src)
+    target_link_libraries(msl_runtime_bench PRIVATE nlohmann_json::nlohmann_json)
+endif()

@@ -2,6 +2,7 @@
 #include "DKUtil/Config.hpp"
 #include "DKUtil/Utility.hpp"
 #include "PrecisionAPI.h"
+#include "RuntimeLogic.h"
 
 namespace ModernStaggerLock
 {
@@ -37,8 +38,15 @@ namespace ModernStaggerLock
 			kTotal
 		};
 
-		static inline std::vector<std::string> quickRecoveryEvents = {};
+		static inline Logic::RecoveryEvents quickRecoveryEvents;
 
 		static inline PRECISION_API::IVPrecision5* ersh_Precision = nullptr;
+
+		std::int32_t GetStaggerLevel(float a_magnitude) const noexcept { return Logic::StaggerLevel(a_magnitude, staggerThresholds_); }
+		bool IsJumpDisabled() const noexcept { return disableJumpWhenStagger_; }
+
+	private:
+		std::array<float, 4> staggerThresholds_{};
+		bool disableJumpWhenStagger_ = true;
 	};
 }

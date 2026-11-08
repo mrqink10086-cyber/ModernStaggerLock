@@ -1,5 +1,6 @@
 #pragma once
 #include "Runtime.h"
+#include "AnimationNames.h"
 
 namespace ModernStaggerLock
 {
@@ -19,10 +20,8 @@ namespace ModernStaggerLock
 		private:
 			static bool Hook_NotifyAnimationGraph(RE::IAnimationGraphManagerHolder* a_graphMgr, const RE::BSFixedString& a_eventName)
 			{
-				if (ProcessStaggerHanlder(a_graphMgr, a_eventName)) {
-					//
-				} else if (ShouldQuickRecovery(a_graphMgr, a_eventName)) {
-					func(a_graphMgr, "StaggerStop");
+				if (ProcessNotification(a_graphMgr, a_eventName)) {
+					func(a_graphMgr, AnimationNames::Get().staggerStop);
 				}
 
 				return func(a_graphMgr, a_eventName);
@@ -44,10 +43,8 @@ namespace ModernStaggerLock
 		private:
 			static bool Hook_NotifyAnimationGraph(RE::IAnimationGraphManagerHolder* a_graphMgr, const RE::BSFixedString& a_eventName)
 			{
-				if (ProcessStaggerHanlder(a_graphMgr, a_eventName)) {
-					//
-				} else if (ShouldQuickRecovery(a_graphMgr, a_eventName)) {
-					func(a_graphMgr, "StaggerStop");
+				if (ProcessNotification(a_graphMgr, a_eventName)) {
+					func(a_graphMgr, AnimationNames::Get().staggerStop);
 				}
 
 				return func(a_graphMgr, a_eventName);
@@ -60,8 +57,7 @@ namespace ModernStaggerLock
 		friend class PlayerEx;
 
 	private:
-		static bool ProcessStaggerHanlder(RE::IAnimationGraphManagerHolder* a_graphMgr, const RE::BSFixedString& a_eventName);
-		static bool ShouldQuickRecovery(RE::IAnimationGraphManagerHolder* a_graphMgr, const RE::BSFixedString& a_eventName);
+		static bool ProcessNotification(RE::IAnimationGraphManagerHolder* a_graphMgr, const RE::BSFixedString& a_eventName);
 
 		NotifyAnimationGraphHook() = delete;
 		~NotifyAnimationGraphHook() = delete;

@@ -16,6 +16,9 @@ namespace ModernStaggerLock
 		MainConfig.Bind(DisableJumpWhenStagger, true);
 
 		MainConfig.Load();
+		staggerThresholds_ = { static_cast<float>(*SmallStaggerMagnitude), static_cast<float>(*MediumStaggerMagnitude),
+			static_cast<float>(*LargeStaggerMagnitude), static_cast<float>(*LargestStaggerMagnitude) };
+		disableJumpWhenStagger_ = *DisableJumpWhenStagger;
 
 		PrintSettingValue(SmallStaggerMagnitude);
 		PrintSettingValue(MediumStaggerMagnitude);
@@ -24,17 +27,18 @@ namespace ModernStaggerLock
 
 		auto MSLFilesName = DKUtil::Config::GetAllFiles<false>("Data\\SKSE\\Plugins\\ModernStaggerLock"sv, ".json"sv, {}, "_MSL"sv);
 		auto SpecialStaggerHandler = SpecialStaggerHandler::GetSingleton();
+		std::vector<std::string> recoveryEvents;
 		for (const auto& fileName : MSLFilesName) {
 			try {
 				json js = json::parse(std::ifstream(fileName));
 				for (auto& element : js) {
 					if (element.contains("QuickRecoveryEvents")) {
 						auto eventLists = element.at("QuickRecoveryEvents").get<std::vector<std::string>>();
-						quickRecoveryEvents.insert(quickRecoveryEvents.end(), eventLists.begin(), eventLists.end());
+						recoveryEvents.insert(recoveryEvents.end(), std::make_move_iterator(eventLists.begin()), std::make_move_iterator(eventLists.end()));
 					} else if (element.contains("SpecialStaggerTransData")) {
 						auto transData = element.at("SpecialStaggerTransData").get<SpecialStaggerTransactionData>();
 						auto animID = HashSpecialStaggerID(transData.animName.data(), transData.animName.size());
-						SpecialStaggerHandler->transDataMap.insert({ animID, transData });
+						SpecialStaggerHandler->transDataMap.emplace(animID, std::move(transData));
 					}
 				}
 			} catch (const json::exception& ex) {
@@ -42,11 +46,13 @@ namespace ModernStaggerLock
 			}
 		}
 
-		for (auto eventName : quickRecoveryEvents) {
+		for (const auto& eventName : recoveryEvents) {
 			INFO("Get a Quick Recovery Event Name: \"{}\"", eventName);
 		}
 
-		for (auto transData : SpecialStaggerHandler->transDataMap) {
+		quickRecoveryEvents.Assign(std::move(recoveryEvents));
+
+		for (const auto& transData : SpecialStaggerHandler->transDataMap) {
 			INFO("Get a Special Stagger Anim Name: \"{}\"", transData.second.animName);
 		}
 	}
