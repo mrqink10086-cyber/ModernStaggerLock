@@ -1,6 +1,8 @@
 # ModernStaggerLock — CommonLibSSE-NG
 
-影天韧性大修的 CommonLibSSE-NG 移植版，插件版本 **1.2.2**。
+影天硬直锁定（Modern Stagger Lock）的 CommonLibSSE-NG 移植版，插件版本 **1.2.2**。
+
+原版是 Maxsu 的硬直动画扩展模组：把命中后的硬直拆成 Small / Medium / Large / Largest 四级，并在动画文件里用注解控制同级衔接与升级衔接。中文社区过去有人把 stagger 译成「交错」或「韧性」，前者是词典义（走路踉跄），后者其实对应 poise，两者在游戏语境里都不准确；本仓库统一用格斗游戏与 Skyrim 汉化里通行的「硬直」，`stagger` = 硬直，`stagger lock` = 硬直锁定，动画之间的过渡称为硬直衔接。
 
 ## 安装
 
