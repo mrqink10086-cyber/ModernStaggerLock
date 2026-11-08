@@ -2,6 +2,8 @@
 
 影天硬直锁定（Modern Stagger Lock）的 CommonLibSSE-NG 移植版，插件版本 **1.2.2**。原版是 Maxsu 的硬直动画扩展模组，把命中后的硬直分成 Small / Medium / Large / Largest 四级，并用动画注解控制同级衔接与升级衔接。
 
+上游 ModernStaggerLock 本身就是 C++ SKSE 插件（DLL），没有 Papyrus 脚本，行为与动画资源在独立的 `Stagger_Lock_Behaviour` 仓库里。这次移植换的是构建与运行时依赖（换成 CommonLibSSE-NG），主要工作有两块：压低每次引擎回调里的执行耗时，以及收紧指针与内存安全边界。
+
 ## 安装
 
 本次交付是 DLL 更新包。将包内 `Data` 合并到游戏目录，或用 MO2/Vortex 安装，覆盖原来的 `Data/SKSE/Plugins/ModernStaggerLock.dll`。
@@ -38,9 +40,9 @@ cmake --install build/ng --config Release --component Plugin --prefix dist/packa
 
 本机实际构建复用了已安装的静态依赖，完整命令与迁移范围见 [迁移记录](docs/migration-commonlibsse-ng.md)。
 
-1.2.1 增加事件过滤、图变量名缓存、配置快照、Precision 载荷解析缓存和连续转场列表。保持原有同步时序，详情、测试与基准见 [运行时优化记录](docs/OPTIMIZATION.md)。
+1.2.1 用事件过滤、图变量名缓存、配置快照、Precision 载荷解析缓存和连续转场数组压低回调耗时：已支持事件分类 55.16 → 17.56 ns/次，无关事件 12.88 → 1.51 ns/次，特殊受击 JSON 解析改缓存命中 1013 → 43.8 ns/次，转场列表整份复制 830 → 4.13 ns/次，恢复事件 256 项 1013 → 78.8 ns/次（i5-13600KF，7 轮中位数）。同步时序和回调顺序不变，详情、测试与基准见 [运行时优化记录](docs/OPTIMIZATION.md)。
 
-1.2.2 修复初始化数据发布、计数器有符号溢出和 JSON 输入内存上限问题。运行时载荷限制为 64 KiB，JSON 配置单文件限制为 4 MiB、累计送入解析的内容限制为 16 MiB；超限输入会跳过。详情见 [安全修复记录](docs/SAFETY-FIXES.md)，本地 Precision 的核查见 [Precision 审计](docs/PRECISION-AUDIT.md)。
+1.2.2 修指针与内存安全边界：运行时数据改为初始化完成后原子发布，所有 Hook 先读到 ready 再访问插件数据，未就绪时只调用游戏原函数；计数器改为有符号溢出安全实现；JSON 与运行时输入加内存上限——单次运行时载荷 64 KiB、单个 JSON 配置 4 MiB、累计送入解析的内容 16 MiB，找 NUL 的 C 字符串扫描最多 64 KiB+1 字节而不再用无界 `strlen`，超限输入跳过而不是继续解析。详情见 [安全修复记录](docs/SAFETY-FIXES.md)，本地 Precision 的核查见 [Precision 审计](docs/PRECISION-AUDIT.md)。
 
 ## 来源
 
