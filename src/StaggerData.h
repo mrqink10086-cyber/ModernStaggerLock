@@ -20,15 +20,17 @@ namespace ModernStaggerLock
 	};
 
 	void from_json(const nlohmann::json& a_json, SpecialStaggerData& a_data);
-	bool ParseStaggerData(std::string_view a_text, SpecialStaggerData& a_data);
+	bool ParseStaggerData(std::string_view a_text, SpecialStaggerData& a_data) noexcept;
 
 	class StaggerPayloadCache
 	{
 	public:
 		static constexpr std::size_t kCapacity = 32;
 		static constexpr std::size_t kMaxKeyLength = 4096;
+		static constexpr std::size_t kMaxPayloadLength = 64 * 1024;
 
-		bool Find(std::string_view a_text, SpecialStaggerData& a_data);
+		bool Find(std::string_view a_text, SpecialStaggerData& a_data) noexcept;
+		bool Find(const char* a_text, SpecialStaggerData& a_data) noexcept;
 
 	private:
 		struct Entry

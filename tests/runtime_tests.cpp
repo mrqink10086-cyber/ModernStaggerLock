@@ -1,3 +1,4 @@
+#include "ConfigInput.h"
 #include "RuntimeLogic.h"
 #include "StaggerData.h"
 
@@ -7,9 +8,12 @@
 #include <cctype>
 #include <cstdint>
 #include <iostream>
+#include <istream>
 #include <limits>
 #include <random>
+#include <sstream>
 #include <stdexcept>
+#include <streambuf>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -112,6 +116,16 @@ namespace
 			alternating += i % 2 == 0 ? "Az" : "zA";
 		}
 		Check(static_cast<std::uint32_t>(ModernStaggerLock::Logic::HashName(alternating)) == ReferenceHash(alternating), "HashName must wrap for long mixed-case input");
+	}
+
+	void TestNextCounter()
+	{
+		using ModernStaggerLock::Logic::NextCounter;
+		static_assert(noexcept(NextCounter(std::int32_t{})));
+		Check(NextCounter(std::numeric_limits<std::int32_t>::max()) == std::numeric_limits<std::int32_t>::min(), "NextCounter must wrap INT32_MAX to INT32_MIN");
+		Check(NextCounter(-1) == 0, "NextCounter must advance -1 to zero");
+		Check(NextCounter(0) == 1, "NextCounter must advance zero to one");
+		Check(NextCounter(41) == 42, "NextCounter must advance ordinary values by one");
 	}
 
 	void TestEventClassification()
@@ -218,12 +232,27 @@ namespace
 			Check(!ModernStaggerLock::ParseStaggerData(text, data), "ParseStaggerData must reject malformed or incorrectly typed fields");
 			CheckData(data, beforeHash, beforeIgnore, "invalid ParseStaggerData must preserve output data");
 		}
+
+		static_assert(ModernStaggerLock::StaggerPayloadCache::kMaxPayloadLength == 64 * 1024);
+		static_assert(ModernStaggerLock::StaggerPayloadCache::kMaxKeyLength == 4096);
+		auto exactlyMax = Payload("AtPayloadLimit");
+		exactlyMax.append(ModernStaggerLock::StaggerPayloadCache::kMaxPayloadLength - exactlyMax.size(), ' ');
+		Check(exactlyMax.size() == ModernStaggerLock::StaggerPayloadCache::kMaxPayloadLength, "payload boundary input must be exactly 64 KiB");
+		Check(ModernStaggerLock::ParseStaggerData(exactlyMax, data), "ParseStaggerData must accept valid JSON at the 64 KiB limit");
+		CheckData(data, ReferenceHash("AtPayloadLimit"), false, "64 KiB payload must parse correctly");
+
+		auto overMax = exactlyMax + " ";
+		const auto beforeHash = data.GetNameHash();
+		const auto beforeIgnore = data.IsIgnoreStaggerLevel();
+		Check(!ModernStaggerLock::ParseStaggerData(overMax, data), "ParseStaggerData must reject input over 64 KiB");
+		CheckData(data, beforeHash, beforeIgnore, "oversized ParseStaggerData must preserve output data");
 	}
 
 	void TestPayloadCache()
 	{
 		static_assert(ModernStaggerLock::StaggerPayloadCache::kCapacity == 32);
 		static_assert(ModernStaggerLock::StaggerPayloadCache::kMaxKeyLength == 4096);
+		static_assert(ModernStaggerLock::StaggerPayloadCache::kMaxPayloadLength == 64 * 1024);
 		ModernStaggerLock::StaggerPayloadCache cache;
 		ModernStaggerLock::SpecialStaggerData data;
 
@@ -312,6 +341,31 @@ namespace
 		Check(cache.Find(overMax, data), "payload over 4096 bytes must still parse");
 		CheckData(data, ReferenceHash("OverMax"), false, "over-limit payload must parse correctly");
 
+		auto exactlyPayloadMax = Payload("AtPayloadLimit");
+		exactlyPayloadMax.append(ModernStaggerLock::StaggerPayloadCache::kMaxPayloadLength - exactlyPayloadMax.size(), ' ');
+		Check(exactlyPayloadMax.size() == ModernStaggerLock::StaggerPayloadCache::kMaxPayloadLength, "cache boundary input must be exactly 64 KiB");
+		Check(cache.Find(std::string_view(exactlyPayloadMax), data), "cache must accept valid JSON at the 64 KiB limit");
+		CheckData(data, ReferenceHash("AtPayloadLimit"), false, "64 KiB cached payload must parse correctly");
+
+		const auto overPayloadMax = exactlyPayloadMax + " ";
+		data = ModernStaggerLock::SpecialStaggerData{};
+		Check(!cache.Find(std::string_view(overPayloadMax), data), "cache string_view lookup must reject input over 64 KiB");
+		CheckData(data, 0u, false, "oversized cache string_view lookup must preserve output");
+
+		const std::string exactCString = exactlyPayloadMax;
+		Check(cache.Find(exactCString.c_str(), data), "cache C-string lookup must accept a payload exactly 64 KiB long");
+		CheckData(data, ReferenceHash("AtPayloadLimit"), false, "exact-limit C-string payload must parse correctly");
+		const std::string overCString = overPayloadMax;
+		data = ModernStaggerLock::SpecialStaggerData{};
+		Check(!cache.Find(overCString.c_str(), data), "cache C-string lookup must reject payloads over 64 KiB");
+		CheckData(data, 0u, false, "oversized cache C-string lookup must preserve output");
+		Check(!cache.Find(static_cast<const char*>(nullptr), data), "cache C-string lookup must reject null input");
+		CheckData(data, 0u, false, "null cache C-string lookup must preserve output");
+
+		std::vector<char> unterminated(ModernStaggerLock::StaggerPayloadCache::kMaxPayloadLength + 1, 'x');
+		Check(!cache.Find(unterminated.data(), data), "cache C-string lookup must reject a nonterminated buffer after a bounded scan");
+		CheckData(data, 0u, false, "unterminated cache C-string lookup must preserve output");
+
 		ModernStaggerLock::StaggerPayloadCache firstCache;
 		ModernStaggerLock::StaggerPayloadCache secondCache;
 		const auto independent = Payload("Independent", true);
@@ -328,6 +382,71 @@ namespace
 		Check(evictedInFirst, "test must generate an eviction for the first cache");
 		Check(secondCache.Find(independent, data), "churning one cache must not affect another cache");
 		CheckData(data, ReferenceHash("Independent"), true, "second cache must retain its own result");
+	}
+
+	class FailingStreamBuffer : public std::streambuf
+	{
+	public:
+		explicit FailingStreamBuffer(std::string a_prefix) :
+			prefix_(std::move(a_prefix)) {}
+
+	protected:
+		std::streamsize xsgetn(char* a_destination, std::streamsize a_count) override
+		{
+			std::streamsize copied = 0;
+			while (copied < a_count && position_ < prefix_.size()) {
+				a_destination[copied++] = prefix_[position_++];
+			}
+			if (copied < a_count) {
+				throw std::ios_base::failure("injected stream read failure");
+			}
+			return copied;
+		}
+
+	private:
+		std::string prefix_;
+		std::size_t position_ = 0;
+	};
+
+	void TestReadConfigText()
+	{
+		static_assert(ModernStaggerLock::kMaxConfigFileBytes == 4 * 1024 * 1024);
+		static_assert(ModernStaggerLock::kMaxConfigTotalBytes == 16 * 1024 * 1024);
+
+		std::string output = "old value";
+		std::istringstream empty;
+		Check(ModernStaggerLock::ReadConfigText(empty, output, 4), "ReadConfigText must accept empty input");
+		Check(output.empty(), "empty config input must replace output with an empty string");
+
+		std::istringstream exact("1234");
+		Check(ModernStaggerLock::ReadConfigText(exact, output, 4), "ReadConfigText must accept input exactly at the byte limit");
+		Check(output == "1234", "exact-limit config input must be returned unchanged");
+
+		std::istringstream over("123456789");
+		output = "preserve me";
+		Check(!ModernStaggerLock::ReadConfigText(over, output, 4), "ReadConfigText must reject input over the byte limit");
+		Check(output == "preserve me", "over-limit config input must preserve output");
+		Check(over.tellg() == std::streampos(5), "ReadConfigText must consume no more than maxBytes plus one byte");
+
+		std::istringstream binary(std::string("a\0b", 3));
+		Check(ModernStaggerLock::ReadConfigText(binary, output, 3), "ReadConfigText must preserve binary NUL bytes within the byte limit");
+		Check(output == std::string("a\0b", 3), "binary config input must retain its exact bytes");
+		std::istringstream binaryOver(std::string("a\0b", 3));
+		output = "preserve binary target";
+		Check(!ModernStaggerLock::ReadConfigText(binaryOver, output, 2), "ReadConfigText must enforce byte limits for binary input");
+		Check(output == "preserve binary target", "over-limit binary config input must preserve output");
+
+		std::istringstream alreadyFailed("ignored");
+		alreadyFailed.setstate(std::ios::badbit);
+		output = "preserve failed target";
+		Check(!ModernStaggerLock::ReadConfigText(alreadyFailed, output, 16), "ReadConfigText must reject a stream already in an I/O failure state");
+		Check(output == "preserve failed target", "failed config input must preserve output");
+
+		FailingStreamBuffer failingBuffer("partial");
+		std::istream failing(&failingBuffer);
+		output = "preserve partial target";
+		Check(!ModernStaggerLock::ReadConfigText(failing, output, 16), "ReadConfigText must reject an I/O failure during reading");
+		Check(output == "preserve partial target", "partially read config input must preserve output");
 	}
 
 	std::string RandomPayload(std::mt19937& a_random, int a_variant)
@@ -383,11 +502,13 @@ int main()
 {
 	try {
 		TestHashName();
+		TestNextCounter();
 		TestEventClassification();
 		TestRecoveryEvents();
 		TestStaggerLevel();
 		TestParseStaggerData();
 		TestPayloadCache();
+		TestReadConfigText();
 		TestRandomizedDifferential();
 		std::cout << "runtime tests passed\n";
 		return 0;

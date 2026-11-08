@@ -20,6 +20,11 @@ namespace ModernStaggerLock::Logic
 		return std::bit_cast<std::int32_t>(hash);
 	}
 
+	constexpr std::int32_t NextCounter(std::int32_t a_value) noexcept
+	{
+		return std::bit_cast<std::int32_t>(std::bit_cast<std::uint32_t>(a_value) + std::uint32_t{ 1 });
+	}
+
 	constexpr int CompareInsensitive(std::string_view a_left, std::string_view a_right) noexcept
 	{
 		const auto size = std::min(a_left.size(), a_right.size());

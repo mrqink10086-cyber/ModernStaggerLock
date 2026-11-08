@@ -1,5 +1,6 @@
 #include "Settings.h"
 #include "SpecialStaggerHandler.h"
+#include "ConfigInput.h"
 
 namespace ModernStaggerLock
 {
@@ -28,9 +29,21 @@ namespace ModernStaggerLock
 		auto MSLFilesName = DKUtil::Config::GetAllFiles<false>("Data\\SKSE\\Plugins\\ModernStaggerLock"sv, ".json"sv, {}, "_MSL"sv);
 		auto SpecialStaggerHandler = SpecialStaggerHandler::GetSingleton();
 		std::vector<std::string> recoveryEvents;
+		std::size_t remainingBytes = kMaxConfigTotalBytes;
 		for (const auto& fileName : MSLFilesName) {
+			if (remainingBytes == 0) {
+				ERROR("MSL JSON configuration budget exhausted ({} bytes); remaining files skipped", kMaxConfigTotalBytes);
+				break;
+			}
 			try {
-				json js = json::parse(std::ifstream(fileName));
+				std::ifstream input(fileName, std::ios::binary);
+				std::string text;
+				if (!ReadConfigText(input, text, std::min(kMaxConfigFileBytes, remainingBytes))) {
+					ERROR("Cannot read MSL JSON file or input limit exceeded: {}", fileName);
+					continue;
+				}
+				remainingBytes -= text.size();
+				json js = json::parse(text);
 				for (auto& element : js) {
 					if (element.contains("QuickRecoveryEvents")) {
 						auto eventLists = element.at("QuickRecoveryEvents").get<std::vector<std::string>>();
@@ -43,6 +56,9 @@ namespace ModernStaggerLock
 				}
 			} catch (const json::exception& ex) {
 				ERROR("Caught expection when parsing file \"{}\":\n {}", fileName, ex.what());
+			} catch (const std::bad_alloc&) {
+				ERROR("Insufficient memory loading MSL JSON configuration; remaining files skipped");
+				break;
 			}
 		}
 

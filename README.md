@@ -1,6 +1,6 @@
 # ModernStaggerLock — CommonLibSSE-NG
 
-影天韧性大修的 CommonLibSSE-NG 移植版，插件版本 **1.2.1**。
+影天韧性大修的 CommonLibSSE-NG 移植版，插件版本 **1.2.2**。
 
 ## 安装
 
@@ -11,7 +11,7 @@
 | Steam 1.6.1170 | 2.2.6 | 对应 1.6.1170 的 AE 数据库 |
 | 1.5.97 | 2.0.20 | 对应 1.5.97 的 SE 数据库 |
 
-保留原版的行为、动画、JSON/INI 配置及相关前置；本包不包含这些资源。原项目的 `Stagger_Lock_Behaviour` 是独立子模块。Precision V5 与 Open Animation Replacer Conditions V2 的集成接口继续保留。需要 Microsoft Visual C++ x64 运行库。
+保留原版的行为、动画、JSON/INI 配置及相关前置；本包不包含这些资源。原项目的 `Stagger_Lock_Behaviour` 是独立子模块。Precision V5 与 Open Animation Replacer Conditions V2 的集成接口继续保留。普通 Precision 2.0.6 仅提供 API V1–V4，无法提供本 Mod 所需的 V5 特殊硬直载荷接口；缺少 V5 时会记录警告并跳过该联动。需要 Microsoft Visual C++ x64 运行库。
 
 支持范围限定为上表两个已核查的运行时；不声明支持 VR、GOG 1.6.1179 或其他 AE 版本。插件加载时检查游戏与 SKSE 版本，安装代码补丁前检查落地调用目标和硬直分支机器码。失败信息记录在 SKSE 日志目录的 `ModernStaggerLock.log`。
 
@@ -37,6 +37,8 @@ cmake --install build/ng --config Release --component Plugin --prefix dist/packa
 本机实际构建复用了已安装的静态依赖，完整命令与迁移范围见 [迁移记录](docs/migration-commonlibsse-ng.md)。
 
 1.2.1 增加事件过滤、图变量名缓存、配置快照、Precision 载荷解析缓存和连续转场列表。保持原有同步时序，详情、测试与基准见 [运行时优化记录](docs/OPTIMIZATION.md)。
+
+1.2.2 修复初始化数据发布、计数器有符号溢出和 JSON 输入内存上限问题。运行时载荷限制为 64 KiB，JSON 配置单文件限制为 4 MiB、累计送入解析的内容限制为 16 MiB；超限输入会跳过。详情见 [安全修复记录](docs/SAFETY-FIXES.md)，本地 Precision 的核查见 [Precision 审计](docs/PRECISION-AUDIT.md)。
 
 ## 来源
 

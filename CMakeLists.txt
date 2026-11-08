@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(ModernStaggerLock VERSION 1.2.1 LANGUAGES CXX RC)
+project(ModernStaggerLock VERSION 1.2.2 LANGUAGES CXX RC)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

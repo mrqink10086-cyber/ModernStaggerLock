@@ -13,7 +13,7 @@ namespace ModernStaggerLock
 
 	bool SpecialStaggerHandler::FindSpecialStaggerData(RE::Actor* a_actor, SpecialStaggerData& a_data)
 	{
-		if (!a_actor) {
+		if (!MSLSettings::IsReady() || !a_actor) {
 			return false;
 		}
 

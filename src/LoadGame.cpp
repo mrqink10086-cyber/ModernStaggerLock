@@ -38,6 +38,8 @@ namespace ModernStaggerLock
 				auto res = MSLSettings::ersh_Precision->AddExtraParameterName(Plugin::NAME.data());
 				if (res == PRECISION_API::APIResult::OK || res == PRECISION_API::APIResult::AlreadyRegistered)
 					INFO("AddExtraParameterName successfully registered.");
+			} else {
+				WARN("Precision V5 extra-data API is unavailable; special-stagger payloads are disabled");
 			}
 
 			OAR_API::Conditions::GetAPI(OAR_API::Conditions::InterfaceVersion::V2);
@@ -49,6 +51,8 @@ namespace ModernStaggerLock
 		} else if (msg->type == SKSE::MessagingInterface::kDataLoaded) {
 			MSLSettings::GetSingleton();
 			AnimationNames::Get();
+			MSLSettings::PublishReady();
+			INFO("Runtime settings initialized and published to hooks");
 		}
 	}
 
