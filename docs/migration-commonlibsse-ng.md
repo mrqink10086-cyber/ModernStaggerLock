@@ -10,7 +10,7 @@
 
 本地 CommonLibSSE-NG 与 GitHub `ng` 分支提交 `07262cc2ae75777a422ed0c9621310fadef7c382` 的源码逐文件 Git blob SHA-1 比较通过，版本 15.7.3；仅 `scripts/build-all-presets.cmd` 有本地差异，保留该文件，未覆盖 CommonLib 本地内容。
 
-CMake 直接编译上述 CommonLib，明确使用 SE/AE，关闭 VR。固定 DKUtil 版本并声明所需依赖；去除原构建中依赖环境变量和 `!Update.ps1` 的自动生成/复制流程。插件元数据、游戏检查、SKSE 最低版本检查、导出和 WinAPI 调用适配新版接口。日志使用 CommonLib 的 SKSE 日志目录；旧版分离到 cpp 的 constexpr 哈希函数改为普通函数以保证链接。
+CMake 直接编译上述 CommonLib，明确使用 SE/AE，关闭 VR。固定 DKUtil 版本并声明所需依赖；去除原构建中依赖环境变量和 `!Update.ps1` 的自动生成/复制流程。插件元数据、游戏检查、SKSE 最低版本检查、导出和 WinAPI 调用适配新版接口。日志使用 CommonLib 的 SKSE 日志目录，并显式设置 DKUtil 配置目录以继续读取 `Data/SKSE/Plugins/ModernStaggerLock.ini`；旧版分离到 cpp 的 constexpr 哈希函数改为普通函数以保证链接。
 
 原有 1.5.97 支持保留，并同样用实际二进制核查。所有版本限定、代码补丁地址及加载前机器码检查集中在 `src/Runtime.h`。虚表槽位不需要改变；NPC/玩家落地调用和硬直条件分支的 AE 地址与 SE 不同，已分别指定。具体数值、指令语义与核查过程见 [OFFSETS.md](OFFSETS.md)。
 

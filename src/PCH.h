@@ -16,6 +16,7 @@ using namespace REL::literals;
 #include "Version.h"
 
 // DKUtil
+#define CONFIG_ENTRY "Data\\SKSE\\Plugins\\"
 #include "DKUtil/Logger.hpp"
 
 
