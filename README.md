@@ -11,7 +11,9 @@
 | Steam 1.6.1170 | 2.2.6 | 对应 1.6.1170 的 AE 数据库 |
 | 1.5.97 | 2.0.20 | 对应 1.5.97 的 SE 数据库 |
 
-保留原版的行为、动画、JSON/INI 配置及相关前置；本包不包含这些资源。原项目的 `Stagger_Lock_Behaviour` 是独立子模块。Precision V5 与 Open Animation Replacer Conditions V2 的集成接口继续保留。普通 Precision 2.0.6 仅提供 API V1–V4，无法提供本 Mod 所需的 V5 特殊硬直载荷接口；缺少 V5 时会记录警告并跳过该联动。需要 Microsoft Visual C++ x64 运行库。
+保留原版的行为、动画、JSON/INI 配置及相关前置；本包不包含这些资源。原项目的 `Stagger_Lock_Behaviour` 是独立子模块。需要 Microsoft Visual C++ x64 运行库。
+
+Precision V5 与 Open Animation Replacer Conditions V2 的集成接口继续保留。普通 Precision 2.0.6 仅提供 API V1–V4，无法提供特殊硬直联动所需的 V5 载荷接口；缺少 V5 时会记录警告并跳过该联动，普通硬直分级、恢复和跳跃限制等本体逻辑继续执行。此处 V5 是作者 Precision 分支增加的接口，不能根据 Precision 的发布日期或软件版本号推断它存在。上游来源及原版降级行为见 [Precision 上游核查](docs/PRECISION-UPSTREAM.md)。
 
 支持范围限定为上表两个已核查的运行时；不声明支持 VR、GOG 1.6.1179 或其他 AE 版本。插件加载时检查游戏与 SKSE 版本，安装代码补丁前检查落地调用目标和硬直分支机器码。失败信息记录在 SKSE 日志目录的 `ModernStaggerLock.log`。
 
