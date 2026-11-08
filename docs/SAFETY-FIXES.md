@@ -40,6 +40,6 @@ Precision 源码只读核查，结论见 [PRECISION-AUDIT.md](PRECISION-AUDIT.md
 
 事件 Hook 参数补齐 `const RE::BSAnimationGraphEvent*`，与 CommonLib 声明一致；虚表槽位、落地补丁、硬直分支地址和最低 SKSE 版本均未改变。
 
-验证包含 MSVC x64 Release 构建、独立回归测试、ASan + UBSan，以及最终 DLL 的导出/版本信息与安装包完整性检查。回归新增计数器环绕、载荷上限、C 字符串有界扫描和实际配置读取函数的边界测试；保留原随机差分测试。
+验证包含 MSVC x64 Release 构建、独立回归测试、ASan + UBSan，以及最终 DLL 的导出/版本信息与安装包完整性检查。回归新增计数器环绕、载荷上限、C 字符串有界扫描和实际配置读取函数的边界测试；包括默认 4 MiB 的精确/超限读取、生产加载器共用的 `ReadConfigFile` 在多文件累计 16 MiB 时的精确/超限行为及失败后预算不变；保留原随机差分测试。
 
 没有运行游戏内战斗和真实线程竞态复现；sanitizer 独立测试不访问 Skyrim 对象，也不代表对整个游戏进程做了内存检测。

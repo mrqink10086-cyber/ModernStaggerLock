@@ -38,11 +38,10 @@ namespace ModernStaggerLock
 			try {
 				std::ifstream input(fileName, std::ios::binary);
 				std::string text;
-				if (!ReadConfigText(input, text, std::min(kMaxConfigFileBytes, remainingBytes))) {
+				if (!ReadConfigFile(input, text, remainingBytes)) {
 					ERROR("Cannot read MSL JSON file or input limit exceeded: {}", fileName);
 					continue;
 				}
-				remainingBytes -= text.size();
 				json js = json::parse(text);
 				for (auto& element : js) {
 					if (element.contains("QuickRecoveryEvents")) {

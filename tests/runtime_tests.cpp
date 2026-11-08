@@ -447,6 +447,37 @@ namespace
 		output = "preserve partial target";
 		Check(!ModernStaggerLock::ReadConfigText(failing, output, 16), "ReadConfigText must reject an I/O failure during reading");
 		Check(output == "preserve partial target", "partially read config input must preserve output");
+
+		const std::string fullFile(ModernStaggerLock::kMaxConfigFileBytes, 'x');
+		std::istringstream defaultExact(fullFile);
+		Check(ModernStaggerLock::ReadConfigText(defaultExact, output), "default reader must accept exactly 4 MiB");
+		Check(output == fullFile, "default reader must return all 4 MiB");
+
+		std::istringstream defaultOver(fullFile + "x");
+		output = "preserve default target";
+		Check(!ModernStaggerLock::ReadConfigText(defaultOver, output), "default reader must reject 4 MiB plus one byte");
+		Check(output == "preserve default target", "default over-limit read must preserve output");
+
+		std::size_t remaining = ModernStaggerLock::kMaxConfigTotalBytes;
+		std::istringstream fileOver(fullFile + "x");
+		Check(!ModernStaggerLock::ReadConfigFile(fileOver, output, remaining), "file policy must enforce 4 MiB even with a larger total budget");
+		Check(remaining == ModernStaggerLock::kMaxConfigTotalBytes && output == "preserve default target", "rejected file must preserve budget and output");
+		for (int i = 0; i < 3; ++i) {
+			std::istringstream file(fullFile);
+			Check(ModernStaggerLock::ReadConfigFile(file, output, remaining), "file policy must accept successive 4 MiB files");
+			Check(remaining == ModernStaggerLock::kMaxConfigTotalBytes - static_cast<std::size_t>(i + 1) * fullFile.size(), "accepted files must consume their actual bytes");
+		}
+		std::istringstream nearTotal(fullFile.substr(0, fullFile.size() - 7));
+		Check(ModernStaggerLock::ReadConfigFile(nearTotal, output, remaining) && remaining == 7, "multiple files must leave the exact remaining total budget");
+		std::istringstream overTotal("12345678");
+		output = "preserve budget target";
+		Check(!ModernStaggerLock::ReadConfigFile(overTotal, output, remaining), "file policy must reject content larger than the remaining total budget");
+		Check(remaining == 7 && output == "preserve budget target", "rejected cumulative overflow must preserve budget and output");
+		std::istringstream exactTotal("1234567");
+		Check(ModernStaggerLock::ReadConfigFile(exactTotal, output, remaining) && remaining == 0, "file policy must accept exactly 16 MiB across multiple files");
+		std::istringstream exhausted("x");
+		Check(!ModernStaggerLock::ReadConfigFile(exhausted, output, remaining), "exhausted total budget must reject another file");
+		Check(output == "1234567" && exhausted.tellg() == std::streampos(0), "exhausted budget must preserve output and skip reading");
 	}
 
 	std::string RandomPayload(std::mt19937& a_random, int a_variant)

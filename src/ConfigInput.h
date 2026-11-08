@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <istream>
@@ -36,5 +37,14 @@ namespace ModernStaggerLock
 		} catch (const std::ios_base::failure&) {
 			return false;
 		}
+	}
+
+	inline bool ReadConfigFile(std::istream& a_input, std::string& a_text, std::size_t& a_remainingBytes) noexcept
+	{
+		if (a_remainingBytes == 0 || !ReadConfigText(a_input, a_text, std::min(kMaxConfigFileBytes, a_remainingBytes))) {
+			return false;
+		}
+		a_remainingBytes -= a_text.size();
+		return true;
 	}
 }
